@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Apple Vision Pro — Пространственные вычисления</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700;800;900&family=SF+Pro+Text:wght@300;400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --black: #000000;
+            --white: #ffffff;
+            --gray-1: #111111;
+            --gray-2: #1d1d1f;
+            --gray-3: #86868b;
+            --gray-4: #d2d2d7;
+            --gray-5: #f5f5f7;
+            --accent: #007AFF;
+            --accent-light: #2997FF;
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-xxl: 48px;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--white);
+            background: var(--black);
+            overflow-x: hidden;
+            font-size: 14px;
+        }
+        
+        body {
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+        
+        p {
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        
+        .container {
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                max-width: 720px;
+                padding: 0 var(--spacing-md);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 960px;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1140px;
+            }
+        }
+        
+        .nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            height: 60px;
+        }
+        
+        .nav.scrolled {
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(20px);
+            height: 56px;
+        }
+        
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--white);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            z-index: 1002;
+        }
+        
+        .logo-icon {
+            font-size: 20px;
+        }
+        
+        .nav-links {
+            display: none;
+        }
+        
+        @media (min-width: 1024px) {
+            .nav-links {
+                display: flex;
+                gap: var(--spacing-md);
+                align-items: center;
+            }
+        }
+        
+        .nav-link {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 400;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .nav-link:active {
+            opacity: 1;
+        }
+        
+        @media (hover: hover) {
+            .nav-link:hover {
+                opacity: 1;
+            }
+        }
+        
+        .nav-toggle {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 24px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+        }
+        
+        @media (min-width: 1024px) {
+            .nav-toggle {
+                display: none;
+            }
+        }
+        
+        .mobile-nav {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.98);
+            backdrop-filter: blur(30px);
+            z-index: 1001;
+            padding: 80px var(--spacing-md) var(--spacing-xl);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            overflow-y: auto;
+        }
+        
+        .mobile-nav.active {
+            right: 0;
+        }
+        
+        @media (min-width: 1024px) {
+            .mobile-nav {
+                display: none;
+            }
+        }
+        
+        .mobile-nav-close {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 24px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .mobile-nav-link {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 20px;
+            font-weight: 500;
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .mobile-nav-link i {
+            font-size: 16px;
+            opacity: 0.5;
+        }
+        
+        .hero {
+            min-height: 100vh;
+            height: 100vh;
+            max-height: -webkit-fill-available;
+            position: relative;
+            background: linear-gradient(135deg, #0a0a0a 0%, var(--black) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            overflow: hidden;
+            padding: 60px var(--spacing-sm) var(--spacing-xl);
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        .hero-title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: var(--spacing-md);
+            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: heroReveal 1s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+            line-height: 1;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .hero-title {
+                font-size: 64px;
+                margin-bottom: var(--spacing-lg);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .hero-title {
+                font-size: 80px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        @keyframes heroReveal {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero-subtitle {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--gray-4);
+            max-width: 100%;
+            margin: 0 auto var(--spacing-lg);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+            line-height: 1.4;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .hero-subtitle {
+                font-size: 24px;
+                max-width: 700px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .hero-subtitle {
+                font-size: 28px;
+                max-width: 800px;
+                margin-bottom: var(--spacing-xxl);
+            }
+        }
+        
+        .hero-product {
+            position: relative;
+            width: 100%;
+            height: 40vh;
+            min-height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: var(--spacing-lg) 0;
+        }
+        
+        @media (min-width: 768px) {
+            .hero-product {
+                height: 50vh;
+                min-height: 300px;
+                margin: var(--spacing-xl) 0;
+            }
+        }
+        
+        .product-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            animation: floatIn 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.6s forwards;
+            filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.7));
+        }
+        
+        @media (min-width: 768px) {
+            .product-image {
+                max-width: 800px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .product-image {
+                max-width: 900px;
+            }
+        }
+        
+        @keyframes floatIn {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .hero-cta {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s cubic-bezier(0.4, 0, 0.2, 1) 0.8s forwards;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            width: 100%;
+        }
+        
+        .cta-button {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--white);
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+            max-width: 320px;
+            -webkit-appearance: none;
+        }
+        
+        .cta-button:active {
+            transform: scale(0.98);
+        }
+        
+        @media (hover: hover) {
+            .cta-button:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: rgba(255, 255, 255, 0.4);
+                transform: scale(1.02);
+            }
+        }
+        
+        .cta-button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        
+        .cta-button.primary:active {
+            background: var(--accent-light);
+            transform: scale(0.98);
+        }
+        
+        @media (hover: hover) {
+            .cta-button.primary:hover {
+                background: var(--accent-light);
+                transform: scale(1.02);
+            }
+        }
+        
+        .cta-links {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-sm);
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .cta-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+            padding: var(--spacing-sm);
+        }
+        
+        .cta-link:active {
+            opacity: 1;
+            text-decoration: underline;
+        }
+        
+        @media (hover: hover) {
+            .cta-link:hover {
+                opacity: 1;
+                text-decoration: underline;
+            }
+        }
+        
+        section {
+            padding: var(--spacing-xxl) 0;
+            position: relative;
+        }
+        
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+            opacity: 0;
+            transform: translateY(20px);
+            padding: 0 var(--spacing-sm);
+            line-height: 1.1;
+        }
+        
+        @media (min-width: 768px) {
+            .section-title {
+                font-size: 48px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .section-title {
+                font-size: 56px;
+            }
+        }
+        
+        .section-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--gray-3);
+            text-align: center;
+            max-width: 100%;
+            margin: 0 auto var(--spacing-xl);
+            opacity: 0;
+            transform: translateY(20px);
+            padding: 0 var(--spacing-sm);
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .section-subtitle {
+                font-size: 20px;
+                max-width: 700px;
+                margin-bottom: var(--spacing-xxl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .section-subtitle {
+                font-size: 24px;
+                max-width: 800px;
+            }
+        }
+        
+        .features-tabs {
+            width: 100%;
+            margin: var(--spacing-lg) auto;
+            position: relative;
+        }
+        
+        @media (min-width: 768px) {
+            .features-tabs {
+                margin: var(--spacing-xl) auto;
+            }
+        }
+        
+        .tabs-navigation {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-lg);
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .tabs-navigation {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: var(--spacing-md);
+            }
+        }
+        
+        .tab-nav {
+            background: transparent;
+            border: none;
+            padding: var(--spacing-md);
+            border-radius: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--gray-3);
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            text-align: left;
+            width: 100%;
+            -webkit-appearance: none;
+        }
+        
+        @media (min-width: 768px) {
+            .tab-nav {
+                width: auto;
+                min-width: 180px;
+                padding: var(--spacing-md) var(--spacing-lg);
+                justify-content: center;
+            }
+        }
+        
+        .tab-nav.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--white);
+            backdrop-filter: blur(20px);
+        }
+        
+        .tab-nav:active:not(.active) {
+            color: var(--white);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        @media (hover: hover) {
+            .tab-nav:hover:not(.active) {
+                color: var(--white);
+                background: rgba(255, 255, 255, 0.05);
+            }
+        }
+        
+        .tab-nav-icon {
+            font-size: 18px;
+            width: 24px;
+        }
+        
+        .tab-nav.active .tab-nav-icon {
+            color: var(--accent);
+        }
+        
+        .tabs-content {
+            position: relative;
+        }
+        
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: tabFadeIn 0.5s ease forwards;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes tabFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .tab-visual-container {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-radius: 20px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+            margin: 0 var(--spacing-sm) var(--spacing-lg);
+        }
+        
+        @media (min-width: 768px) {
+            .tab-visual-container {
+                padding: var(--spacing-xl);
+                margin: 0 auto var(--spacing-xl);
+                max-width: 1000px;
+            }
+        }
+        
+        .tab-main-visual {
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .tab-info {
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .tab-info {
+                padding: 0;
+                max-width: 1000px;
+                margin: 0 auto;
+            }
+        }
+        
+        .tab-header {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        @media (min-width: 768px) {
+            .tab-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        .tab-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--white);
+            line-height: 1.1;
+        }
+        
+        @media (min-width: 768px) {
+            .tab-title {
+                font-size: 40px;
+            }
+        }
+        
+        .tab-highlight {
+            text-align: center;
+            background: rgba(0, 122, 255, 0.1);
+            padding: var(--spacing-sm);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            align-self: flex-start;
+        }
+        
+        @media (min-width: 768px) {
+            .tab-highlight {
+                align-self: center;
+            }
+        }
+        
+        .highlight-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        
+        @media (min-width: 768px) {
+            .highlight-value {
+                font-size: 32px;
+            }
+        }
+        
+        .highlight-label {
+            font-size: 12px;
+            color: var(--gray-4);
+            font-weight: 500;
+        }
+        
+        @media (min-width: 768px) {
+            .highlight-label {
+                font-size: 14px;
+            }
+        }
+        
+        .tab-desc {
+            color: var(--gray-4);
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: var(--spacing-lg);
+            max-width: 100%;
+        }
+        
+        @media (min-width: 768px) {
+            .tab-desc {
+                font-size: 20px;
+                max-width: 800px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        .display-visual-3d {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-lg);
+            perspective: 1000px;
+        }
+        
+        @media (min-width: 768px) {
+            .display-visual-3d {
+                flex-direction: row;
+                justify-content: center;
+                gap: var(--spacing-xl);
+            }
+        }
+        
+        .display-eye {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        @media (min-width: 768px) {
+            .display-eye {
+                width: 150px;
+                height: 150px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .display-eye {
+                width: 200px;
+                height: 200px;
+            }
+        }
+        
+        .left-eye {
+            animation: floatLeft 3s ease-in-out infinite;
+        }
+        
+        .right-eye {
+            animation: floatRight 3s ease-in-out infinite;
+        }
+        
+        @keyframes floatLeft {
+            0%, 100% { transform: translateY(0) rotateY(-15deg); }
+            50% { transform: translateY(-10px) rotateY(-10deg); }
+        }
+        
+        @keyframes floatRight {
+            0%, 100% { transform: translateY(0) rotateY(15deg); }
+            50% { transform: translateY(-10px) rotateY(10deg); }
+        }
+        
+        .eye-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a2540 0%, #001f3f 100%);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 0 60px rgba(0, 122, 255, 0.3),
+                0 0 40px rgba(0, 122, 255, 0.2);
+        }
+        
+        .pixel-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 4px 4px;
+            animation: pixelShift 20s linear infinite;
+        }
+        
+        @keyframes pixelShift {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+        
+        .resolution-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--accent);
+            padding: var(--spacing-sm);
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            border: 2px solid var(--accent);
+        }
+        
+        @media (min-width: 768px) {
+            .resolution-badge {
+                font-size: 20px;
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+        }
+        
+        .tech-features {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+        
+        @media (min-width: 768px) {
+            .tech-features {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-lg);
+                margin-top: var(--spacing-xl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .tech-features {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        .tech-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+            background: rgba(255, 255, 255, 0.05);
+            padding: var(--spacing-md);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+        
+        .tech-feature:active {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        @media (hover: hover) {
+            .tech-feature:hover {
+                transform: translateY(-5px);
+                background: rgba(255, 255, 255, 0.08);
+            }
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+        
+        .feature-content h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+            color: var(--white);
+            line-height: 1.2;
+        }
+        
+        @media (min-width: 768px) {
+            .feature-content h4 {
+                font-size: 18px;
+            }
+        }
+        
+        .feature-content p {
+            color: var(--gray-4);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .feature-content p {
+                font-size: 16px;
+            }
+        }
+        
+        .sound-visualization {
+            height: 300px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        @media (min-width: 768px) {
+            .sound-visualization {
+                height: 400px;
+            }
+        }
+        
+        .sound-head {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            z-index: 2;
+            transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @media (min-width: 768px) {
+            .sound-head {
+                width: 180px;
+                height: 180px;
+            }
+        }
+        
+        .head-outline {
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .ear {
+            position: absolute;
+            top: 50%;
+            width: 20px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        .left-ear {
+            left: -10px;
+            transform: translateY(-50%);
+        }
+        
+        .right-ear {
+            right: -10px;
+            transform: translateY(-50%);
+        }
+        
+        @media (min-width: 768px) {
+            .ear {
+                width: 40px;
+                height: 60px;
+                border-radius: 20px;
+            }
+            
+            .left-ear {
+                left: -20px;
+            }
+            
+            .right-ear {
+                right: -20px;
+            }
+        }
+        
+        .sound-sources {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sound-source {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+        
+        .source-1 { top: 20%; left: 20%; }
+        .source-2 { top: 20%; right: 20%; }
+        .source-3 { bottom: 20%; left: 50%; transform: translateX(-50%); }
+        
+        .source-pulse {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulseSound 2s infinite;
+            position: relative;
+        }
+        
+        .source-2 .source-pulse {
+            background: #FF2D55;
+        }
+        
+        .source-3 .source-pulse {
+            background: #FFD60A;
+        }
+        
+        @keyframes pulseSound {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% { 
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+        
+        .source-label {
+            margin-top: var(--spacing-xs);
+            font-size: 12px;
+            color: var(--gray-4);
+            font-weight: 500;
+        }
+        
+        .sound-waves {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .wave {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: waveExpand 3s linear infinite;
+        }
+        
+        .wave-1 {
+            width: 200px;
+            height: 200px;
+            animation-delay: 0s;
+        }
+        
+        .wave-2 {
+            width: 250px;
+            height: 250px;
+            animation-delay: 1s;
+        }
+        
+        .wave-3 {
+            width: 300px;
+            height: 300px;
+            animation-delay: 2s;
+        }
+        
+        @media (min-width: 768px) {
+            .wave-1 {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .wave-2 {
+                width: 400px;
+                height: 400px;
+            }
+            
+            .wave-3 {
+                width: 500px;
+                height: 500px;
+            }
+        }
+        
+        @keyframes waveExpand {
+            0% {
+                width: 0;
+                height: 0;
+                opacity: 1;
+            }
+            100% {
+                width: 400px;
+                height: 400px;
+                opacity: 0;
+            }
+        }
+        
+        @media (min-width: 768px) {
+            @keyframes waveExpand {
+                0% {
+                    width: 0;
+                    height: 0;
+                    opacity: 1;
+                }
+                100% {
+                    width: 600px;
+                    height: 600px;
+                    opacity: 0;
+                }
+            }
+        }
+        
+        .sound-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            background: rgba(0, 0, 0, 0.7);
+            padding: var(--spacing-sm);
+            border-radius: 50px;
+            color: var(--gray-4);
+            font-size: 12px;
+            animation: hintPulse 2s infinite;
+        }
+        
+        @keyframes hintPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        .sound-demo-text {
+            background: rgba(0, 122, 255, 0.1);
+            padding: var(--spacing-md);
+            border-radius: 16px;
+            margin: var(--spacing-lg) 0;
+            border: 1px solid rgba(0, 122, 255, 0.2);
+        }
+        
+        .demo-title {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+            color: var(--accent);
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .demo-desc {
+            color: var(--gray-4);
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        @media (min-width: 768px) {
+            .sound-demo-text {
+                padding: var(--spacing-lg);
+            }
+            
+            .demo-title {
+                font-size: 18px;
+            }
+            
+            .demo-desc {
+                font-size: 16px;
+            }
+        }
+        
+        .sound-specs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-xl);
+        }
+        
+        .sound-spec {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: var(--spacing-md);
+            border-radius: 12px;
+        }
+        
+        .spec-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        @media (min-width: 768px) {
+            .spec-value {
+                font-size: 20px;
+            }
+        }
+        
+        .spec-label {
+            font-size: 12px;
+            color: var(--gray-4);
+        }
+        
+        @media (min-width: 768px) {
+            .spec-label {
+                font-size: 14px;
+            }
+        }
+        
+        .display-section {
+            background: linear-gradient(135deg, #111 0%, #000 100%);
+            overflow: hidden;
+        }
+        
+        .display-comparison {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            width: 100%;
+            margin: var(--spacing-lg) auto;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .display-comparison {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-xl);
+                max-width: 1000px;
+                margin: var(--spacing-xl) auto;
+                padding: 0;
+            }
+        }
+        
+        .display-image {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+        
+        .display-image:active {
+            transform: translateY(-5px);
+        }
+        
+        @media (hover: hover) {
+            .display-image:hover {
+                transform: translateY(-5px);
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .display-image {
+                height: 400px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .display-image {
+                height: 600px;
+            }
+        }
+        
+        .display-image-1 {
+            background-image: url("apps_selection__d5ou.jpg");
+        }
+        
+        .display-image-2 {
+            background-image: url("visionos-vision-pro-scaling.jpg");
+        }
+        
+        .display-info {
+            max-width: 800px;
+            margin: var(--spacing-xl) auto;
+            text-align: center;
+        }
+        
+        .display-info h3 {
+            font-size: 24px;
+            margin-bottom: var(--spacing-md);
+        }
+        
+        @media (min-width: 768px) {
+            .display-info h3 {
+                font-size: 32px;
+            }
+        }
+        
+        .display-info p {
+            color: var(--gray-4);
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        @media (min-width: 768px) {
+            .display-info p {
+                font-size: 18px;
+            }
+        }
+        
+        .performance-section {
+            background: var(--black);
+        }
+        
+        .chips-single {
+            position: relative;
+            width: 100%;
+            margin: var(--spacing-lg) auto;
+            text-align: center;
+        }
+        
+        @media (min-width: 768px) {
+            .chips-single {
+                max-width: 800px;
+                margin: var(--spacing-xl) auto;
+            }
+        }
+        
+        .single-chip-image {
+            width: 100%;
+            height: 200px;
+            margin: 0 auto;
+            background-image: url("j2cyl8yibfha7v5garviklrg2wk0f42s.jpeg");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        @media (min-width: 768px) {
+            .single-chip-image {
+                height: 300px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .single-chip-image {
+                height: 400px;
+            }
+        }
+        
+        .chip-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(0, 122, 255, 0.3) 0%, transparent 70%);
+            filter: blur(40px);
+            opacity: 0.5;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+        
+        .chips-info {
+            width: 100%;
+            margin: var(--spacing-lg) auto;
+            text-align: center;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .chips-info {
+                max-width: 600px;
+                margin: var(--spacing-xl) auto;
+                padding: 0;
+            }
+        }
+        
+        .chip-dual-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: var(--spacing-sm);
+            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+        }
+        
+        @media (min-width: 768px) {
+            .chip-dual-title {
+                font-size: 48px;
+            }
+        }
+        
+        .chip-dual-subtitle {
+            font-size: 16px;
+            color: var(--gray-4);
+            margin-bottom: var(--spacing-xl);
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .chip-dual-subtitle {
+                font-size: 24px;
+            }
+        }
+        
+        .chips-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-xl);
+        }
+        
+        @media (min-width: 768px) {
+            .chips-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: var(--spacing-xl);
+            }
+        }
+        
+        .chip-card {
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            padding: var(--spacing-md);
+        }
+        
+        .chip-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto var(--spacing-md);
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--accent);
+        }
+        
+        @media (min-width: 768px) {
+            .chip-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 32px;
+            }
+        }
+        
+        .chip-card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+            color: var(--white);
+            line-height: 1.2;
+        }
+        
+        @media (min-width: 768px) {
+            .chip-card-title {
+                font-size: 28px;
+            }
+        }
+        
+        .chip-card-desc {
+            color: var(--gray-4);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .chip-card-desc {
+                font-size: 18px;
+                line-height: 1.5;
+            }
+        }
+        
+        .ecosystem-section {
+            background: linear-gradient(135deg, #000 0%, #0a2540 100%);
+        }
+        
+        .devices-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+            width: 100%;
+            margin: var(--spacing-lg) auto;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .devices-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: var(--spacing-lg);
+                max-width: 900px;
+                margin: var(--spacing-xl) auto;
+                padding: 0;
+            }
+        }
+        
+        .device {
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            padding: var(--spacing-md);
+        }
+        
+        .device-image {
+            width: 100%;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-bottom: var(--spacing-md);
+            transition: transform 0.3s ease;
+        }
+        
+        .device:active .device-image {
+            transform: scale(1.05);
+        }
+        
+        @media (hover: hover) {
+            .device:hover .device-image {
+                transform: scale(1.05);
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .device-image {
+                height: 200px;
+            }
+        }
+        
+        .device-iphone {
+            background-image: url("images-Photoroom.png");
+        }
+        
+        .device-mac {
+            background-image: url("images (1)-Photoroom.png");
+        }
+        
+        .device-ipad {
+            background-image: url("2-Photoroom.png");
+        }
+        
+        .device-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        @media (min-width: 768px) {
+            .device-name {
+                font-size: 20px;
+            }
+        }
+        
+        .main-cta-section {
+            background: linear-gradient(135deg, #0a0a0a 0%, var(--black) 100%);
+            text-align: center;
+            padding: var(--spacing-xxl) 0;
+        }
+        
+        .main-cta-title {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: var(--spacing-lg);
+            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .main-cta-title {
+                font-size: 56px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .main-cta-title {
+                font-size: 72px;
+            }
+        }
+        
+        .main-cta-subtitle {
+            font-size: 18px;
+            color: var(--gray-4);
+            max-width: 100%;
+            margin: 0 auto var(--spacing-lg);
+            line-height: 1.4;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .main-cta-subtitle {
+                font-size: 24px;
+                max-width: 800px;
+                margin-bottom: var(--spacing-xl);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .main-cta-subtitle {
+                font-size: 28px;
+                max-width: 900px;
+            }
+        }
+        
+        .color-section {
+            background: var(--black);
+        }
+        
+        .color-options {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xl);
+            margin: var(--spacing-lg) 0;
+            padding: 0 var(--spacing-sm);
+        }
+        
+        @media (min-width: 768px) {
+            .color-options {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: var(--spacing-xl);
+                margin: var(--spacing-xl) 0;
+                padding: 0;
+            }
+        }
+        
+        .color-option {
+            text-align: center;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .color-option:active {
+            transform: translateY(-5px);
+        }
+        
+        @media (hover: hover) {
+            .color-option:hover {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .color-preview {
+            width: 250px;
+            height: 250px;
+            border-radius: 20px;
+            margin-bottom: var(--spacing-md);
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .color-option.active .color-preview {
+            box-shadow: 0 0 0 3px var(--accent), 0 20px 40px rgba(0, 122, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        @media (min-width: 768px) {
+            .color-preview {
+                width: 250px;
+                height: 250px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .color-preview {
+                width: 300px;
+                height: 300px;
+            }
+        }
+        
+        .color-image {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.5s ease;
+        }
+        
+        .color-option:active .color-image {
+            transform: scale(1.1);
+        }
+        
+        @media (hover: hover) {
+            .color-option:hover .color-image {
+                transform: scale(1.1);
+            }
+        }
+        
+        .color-space-gray .color-image {
+            background-image: url("images (4)-Photoroom.png");
+        }
+        
+        .color-silver .color-image {
+            background-image: url("dqwfuio89v-Photoroom.png");
+        }
+        
+        .color-midnight .color-image {
+            background-image: url("AQAK9HPAyOQzZSMBwdb9CEllKl6ZeFqBRqrVuUiAeJCmX2DSU111DVVPJuSYYXikfqtKXMUe2pwdUzz-zfLeR1WO92k-Photoroom.png");
+        }
+        
+        .color-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        @media (min-width: 768px) {
+            .color-name {
+                font-size: 24px;
+            }
+        }
+        
+        .color-desc {
+            color: var(--gray-4);
+            font-size: 14px;
+            max-width: 250px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .color-desc {
+                font-size: 16px;
+                max-width: 300px;
+            }
+        }
+        
+        footer {
+            background: var(--gray-1);
+            padding: var(--spacing-xl) 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .footer-content {
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 var(--spacing-sm);
+            text-align: center;
+        }
+        
+        @media (min-width: 768px) {
+            .footer-content {
+                max-width: 900px;
+            }
+        }
+        
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+            align-items: center;
+        }
+        
+        @media (min-width: 768px) {
+            .footer-links {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: var(--spacing-xl);
+            }
+        }
+        
+        .footer-link {
+            color: var(--gray-4);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s ease;
+            padding: 4px 0;
+        }
+        
+        .footer-link:active {
+            color: var(--white);
+        }
+        
+        @media (hover: hover) {
+            .footer-link:hover {
+                color: var(--white);
+            }
+        }
+        
+        .copyright {
+            color: var(--gray-3);
+            font-size: 11px;
+            margin-top: var(--spacing-lg);
+            line-height: 1.4;
+        }
+        
+        @media (min-width: 768px) {
+            .copyright {
+                font-size: 12px;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                       transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        @media (orientation: landscape) and (max-height: 600px) {
+            .hero {
+                height: auto;
+                min-height: 100vh;
+                padding-top: 80px;
+                padding-bottom: var(--spacing-xl);
+            }
+            
+            .hero-title {
+                font-size: 36px;
+                margin-bottom: var(--spacing-sm);
+            }
+            
+            .hero-subtitle {
+                font-size: 16px;
+                margin-bottom: var(--spacing-md);
+            }
+            
+            .hero-product {
+                height: 30vh;
+                min-height: 150px;
+                margin: var(--spacing-md) 0;
+            }
+            
+            .product-image {
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav" id="nav">
+        <a href="#" class="logo">
+            <i class="fab fa-apple logo-icon"></i>
+            <span>Vision Pro</span>
+        </a>
+        
+        <div class="nav-links">
+            <a href="#overview" class="nav-link">Обзор</a>
+            <a href="#features" class="nav-link">Технологии</a>
+            <a href="#tech" class="nav-link">Дисплей</a>
+            <a href="#performance" class="nav-link">Производительность</a>
+            <a href="#ecosystem" class="nav-link">Экосистема</a>
+            <a href="#buy" class="nav-link">Купить</a>
+        </div>
+        
+        <button class="nav-toggle" id="navToggle" aria-label="Открыть меню">
+            <i class="fas fa-bars"></i>
+        </button>
+    </nav>
+    
+    <div class="mobile-nav" id="mobileNav">
+        <button class="mobile-nav-close" id="mobileNavClose" aria-label="Закрыть меню">
+            <i class="fas fa-times"></i>
+        </button>
+        <a href="#overview" class="mobile-nav-link">
+            Обзор
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="#features" class="mobile-nav-link">
+            Технологии
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="#tech" class="mobile-nav-link">
+            Дисплей
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="#performance" class="mobile-nav-link">
+            Производительность
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="#ecosystem" class="mobile-nav-link">
+            Экосистема
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="#buy" class="mobile-nav-link">
+            Купить
+            <i class="fas fa-chevron-right"></i>
+        </a>
+    </div>
+    
+    <section class="hero" id="overview">
+        <div class="hero-content">
+            <h1 class="hero-title">Vision Pro</h1>
+            <p class="hero-subtitle">
+                Пространственные вычисления. Ваш цифровой контент становится частью физического мира.
+            </p>
+            
+            <div class="hero-product">
+                <img src="apple-vison-pro.jpeg" alt="Apple Vision Pro" class="product-image">
+            </div>
+            
+            <div class="hero-cta">
+                <a href="#buy" class="cta-button primary">
+                    <i class="fas fa-shopping-bag"></i>
+                    Купить
+                </a>
+                <div class="cta-links">
+                    <a href="#features" class="cta-link">Подробнее о технологиях</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="container" id="features">
+        <h2 class="section-title fade-in">Технологии Apple</h2>
+        <p class="section-subtitle fade-in">
+            Каждая деталь продумана для полного погружения
+        </p>
+        
+        <div class="features-tabs">
+            <div class="tabs-navigation fade-in">
+                <button class="tab-nav active" data-tab="tab1">
+                    <i class="fas fa-eye tab-nav-icon"></i>
+                    <span class="tab-nav-text">Дисплей</span>
+                </button>
+                <button class="tab-nav" data-tab="tab2">
+                    <i class="fas fa-volume-up tab-nav-icon"></i>
+                    <span class="tab-nav-text">Звук</span>
+                </button>
+            </div>
+            
+            <div class="tabs-content">
+                <div class="tab-content active" id="tab1">
+                    <div class="tab-visual-container">
+                        <div class="tab-main-visual">
+                            <div class="display-visual-3d">
+                                <div class="display-eye left-eye">
+                                    <div class="eye-inner">
+                                        <div class="pixel-grid"></div>
+                                        <div class="resolution-badge">4K</div>
+                                    </div>
+                                </div>
+                                <div class="display-eye right-eye">
+                                    <div class="eye-inner">
+                                        <div class="pixel-grid"></div>
+                                        <div class="resolution-badge">4K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-info">
+                        <div class="tab-header">
+                            <h3 class="tab-title">Дисплей Micro-OLED</h3>
+                            <div class="tab-highlight">
+                                <span class="highlight-value">23M</span>
+                                <span class="highlight-label">пикселей на глаз</span>
+                            </div>
+                        </div>
+                        
+                        <p class="tab-desc">
+                            Vision Pro создает ощущение полного присутствия с помощью двух дисплеев Micro‑OLED 
+                            с разрешением выше 4K на каждый глаз. Это более 23 миллионов пикселей на глаз — 
+                            в четыре раза больше, чем в 4K‑телевизоре.
+                        </p>
+                        
+                        <div class="tech-features">
+                            <div class="tech-feature">
+                                <div class="feature-icon">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                </div>
+                                <div class="feature-content">
+                                    <h4>120 Гц ProMotion</h4>
+                                    <p>Плавная прокрутка и отзывчивый интерфейс</p>
+                                </div>
+                            </div>
+                            <div class="tech-feature">
+                                <div class="feature-icon">
+                                    <i class="fas fa-sun"></i>
+                                </div>
+                                <div class="feature-content">
+                                    <h4>5000 нит HDR</h4>
+                                    <p>Пиковая яркость для невероятного контраста</p>
+                                </div>
+                            </div>
+                            <div class="tech-feature">
+                                <div class="feature-icon">
+                                    <i class="fas fa-palette"></i>
+                                </div>
+                                <div class="feature-content">
+                                    <h4>Широкий цвет P3</h4>
+                                    <p>Максимально реалистичные цвета</p>
+                                </div>
+                            </div>
+                            <div class="tech-feature">
+                                <div class="feature-icon">
+                                    <i class="fas fa-palette"></i>
+                                </div>
+                                <div class="feature-content">
+                                    <h4>Красивый дизайн</h4>
+                                    <p>Максимально удобные цвета</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="tab2">
+                    <div class="tab-visual-container">
+                        <div class="sound-visualization">
+                            <div class="sound-head" id="soundHead">
+                                <div class="head-outline"></div>
+                                <div class="ear left-ear"></div>
+                                <div class="ear right-ear"></div>
+                            </div>
+                            
+                            <div class="sound-sources">
+                                <div class="sound-source source-1" data-type="voice">
+                                    <div class="source-pulse"></div>
+                                    <div class="source-label">Голос</div>
+                                </div>
+                                <div class="sound-source source-2" data-type="music">
+                                    <div class="source-pulse"></div>
+                                    <div class="source-label">Музыка</div>
+                                </div>
+                                <div class="sound-source source-3" data-type="effects">
+                                    <div class="source-pulse"></div>
+                                    <div class="source-label">Эффекты</div>
+                                </div>
+                            </div>
+                            
+                            <div class="sound-waves">
+                                <div class="wave wave-1"></div>
+                                <div class="wave wave-2"></div>
+                                <div class="wave wave-3"></div>
+                            </div>
+                            
+                            <div class="sound-hint">
+                                <i class="fas fa-arrows-alt-h"></i>
+                                <span>Поверните голову</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-info">
+                        <div class="tab-header">
+                            <h3 class="tab-title">Пространственный звук</h3>
+                            <div class="tab-highlight">
+                                <span class="highlight-value">6</span>
+                                <span class="highlight-label">динамиков</span>
+                            </div>
+                        </div>
+                        
+                        <p class="tab-desc">
+                            Аудиосистема с динамическим отслеживанием головы создает звуковое поле, 
+                            которое остается закрепленным в виртуальном пространстве. Даже когда 
+                            вы двигаетесь, звук сохраняет свое положение относительно вас.
+                        </p>
+                        
+                        <div class="sound-demo-text">
+                            <div class="demo-title">
+                                <i class="fas fa-volume-up"></i>
+                                <span>Звук остается на месте</span>
+                            </div>
+                            <p class="demo-desc">
+                                Диалоги, музыка и эффекты закреплены в пространстве, создавая 
+                                ощущение реальности. Система отслеживает движение головы 
+                                с точностью до миллиметра.
+                            </p>
+                        </div>
+                        
+                        <div class="sound-specs">
+                            <div class="sound-spec">
+                                <div class="spec-value">Dolby Atmos</div>
+                                <div class="spec-label">Аудиокодек</div>
+                            </div>
+                            <div class="sound-spec">
+                                <div class="spec-value">20 Гц – 20 кГц</div>
+                                <div class="spec-label">Частотный диапазон</div>
+                            </div>
+                            <div class="sound-spec">
+                                <div class="spec-value">&lt;1 мс</div>
+                                <div class="spec-label">Задержка отслеживания</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="display-section" id="tech">
+        <div class="container">
+            <h2 class="section-title fade-in">Революционный дисплей</h2>
+            <p class="section-subtitle fade-in">
+                Самый продвинутый дисплей для погружения. И теперь он здесь.
+            </p>
+            
+            <div class="display-comparison">
+                <div class="display-image display-image-1 fade-in"></div>
+                <div class="display-image display-image-2 fade-in"></div>
+            </div>
+            
+            <div class="display-info">
+                <h3>Micro‑OLED нового поколения</h3>
+                <p>
+                    Два дисплея Micro‑OLED с разрешением 23 миллиона пикселей на каждый глаз — 
+                    это больше пикселей, чем в 4K‑телевизоре. Пиковая яркость 5000 нит обеспечивает 
+                    невероятный контраст, а поддержка широкого цветового охвата P3 делает каждый цвет 
+                    максимально реалистичным.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="performance-section" id="performance">
+        <div class="container">
+            <h2 class="section-title fade-in">M5 и R1</h2>
+            <p class="section-subtitle fade-in">
+                Два чипа для пространственных вычислений
+            </p>
+            
+            <div class="chips-single">
+                <div class="single-chip-image fade-in">
+                    <div class="chip-glow"></div>
+                </div>
+                
+                <div class="chips-info">
+                    <h3 class="chip-dual-title">Два чипа. Одна революция.</h3>
+                    <p class="chip-dual-subtitle">
+                        M2 обеспечивает производительность, R1 — мгновенную обработку данных с датчиков
+                    </p>
+                    
+                    <div class="chips-grid">
+                        <div class="chip-card fade-in">
+                            <div class="chip-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <h3 class="chip-card-title">Чип M2</h3>
+                            <p class="chip-card-desc">
+                                8‑ядерный CPU, 10‑ядерный GPU и 16‑ядерный Neural Engine. 
+                                Обработка контента и запуск приложений.
+                            </p>
+                        </div>
+                        
+                        <div class="chip-card fade-in">
+                            <div class="chip-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <h3 class="chip-card-title">Чип R1</h3>
+                            <p class="chip-card-desc">
+                                Специализированный процессор для обработки данных с датчиков 
+                                с задержкой всего 12 мс. 12 камер, 5 датчиков, 6 микрофонов.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="ecosystem-section" id="ecosystem">
+        <div class="container">
+            <h2 class="section-title fade-in">Часть экосистемы Apple</h2>
+            <p class="section-subtitle fade-in">
+                Бесшовная интеграция со всеми вашими устройствами
+            </p>
+            
+            <div class="devices-grid">
+                <div class="device fade-in">
+                    <div class="device-image device-iphone"></div>
+                    <h3 class="device-name">iPhone</h3>
+                    <p class="chip-card-desc">Съемка пространственного видео для иммерсивного просмотра</p>
+                </div>
+                
+                <div class="device fade-in">
+                    <div class="device-image device-mac"></div>
+                    <h3 class="device-name">Mac</h3>
+                    <p class="chip-card-desc">Расширение рабочего пространства на виртуальные дисплеи</p>
+                </div>
+                
+                <div class="device fade-in">
+                    <div class="device-image device-ipad"></div>
+                    <h3 class="device-name">iPad</h3>
+                    <p class="chip-card-desc">Запуск миллионов приложений в пространственной среде</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="main-cta-section">
+        <div class="container">
+            <h2 class="main-cta-title fade-in">Vision Pro</h2>
+            <p class="main-cta-subtitle fade-in">
+                Пространственные вычисления. Ваш цифровой контент становится частью физического мира.
+            </p>
+            
+            <div class="hero-cta">
+                <a href="#buy" class="cta-button primary">
+                    <i class="fas fa-shopping-bag"></i>
+                    Купить
+                </a>
+                <p class="chip-card-desc" style="margin-top: var(--spacing-md);">
+                    Бесплатная доставка. Trade-in с выгодой до 30%. Рассрочка от 12 месяцев.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <section class="color-section" id="buy">
+        <div class="container">
+            <h2 class="section-title fade-in">Выберите свой</h2>
+            <p class="section-subtitle fade-in">
+                Индивидуальная посадка и настройка под ваши параметры
+            </p>
+            
+            <div class="color-options">
+                <div class="color-option color-space-gray fade-in" data-color="space-gray">
+                    <div class="color-preview">
+                        <div class="color-image"></div>
+                    </div>
+                    <h3 class="color-name">Space Gray</h3>
+                    <p class="color-desc">Матовое темно-серое покрытие с текстурой</p>
+                </div>
+                
+                <div class="color-option color-silver fade-in" data-color="silver">
+                    <div class="color-preview">
+                        <div class="color-image"></div>
+                    </div>
+                    <h3 class="color-name">Silver</h3>
+                    <p class="color-desc">Гладкое серебристо-белое покрытие</p>
+                </div>
+                
+                <div class="color-option color-midnight fade-in" data-color="midnight">
+                    <div class="color-preview">
+                        <div class="color-image"></div>
+                    </div>
+                    <h3 class="color-name">Midnight</h3>
+                    <p class="color-desc">Глубокий черный с синим отливом</p>
+                </div>
+            </div>
+            
+            <div class="hero-cta">
+                <a href="#" class="cta-button primary">
+                    <i class="fas fa-shopping-bag"></i>
+                    Купить
+                </a>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="logo">
+                <i class="fab fa-apple logo-icon"></i>
+                <span>Vision Pro</span>
+            </div>
+            
+            <div class="footer-links">
+                <a href="#" class="footer-link">Конфиденциальность</a>
+                <a href="#" class="footer-link">Использование файлов cookie</a>
+                <a href="#" class="footer-link">Условия использования</a>
+                <a href="#" class="footer-link">Продажа и возврат</a>
+                <a href="#" class="footer-link">Правовая информация</a>
+            </div>
+            
+            <p class="copyright">
+                © 2025 Apple Inc. САЙТ НЕ НАСТОЯЩИЙ!.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nav = document.getElementById('nav');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    nav.classList.add('scrolled');
+                } else {
+                    nav.classList.remove('scrolled');
+                }
+            });
+            
+            const navToggle = document.getElementById('navToggle');
+            const mobileNav = document.getElementById('mobileNav');
+            const mobileNavClose = document.getElementById('mobileNavClose');
+            
+            navToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                mobileNav.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            
+            mobileNavClose.addEventListener('click', () => {
+                mobileNav.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            });
+            
+            document.querySelectorAll('.mobile-nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    
+                    mobileNav.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                    
+                    if (targetElement) {
+                        setTimeout(() => {
+                            window.scrollTo({
+                                top: targetElement.offsetTop - 60,
+                                behavior: 'smooth'
+                            });
+                        }, 300);
+                    }
+                });
+            });
+            
+            const fadeElements = document.querySelectorAll('.fade-in');
+            const fadeObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        fadeObserver.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -30px 0px'
+            });
+            
+            fadeElements.forEach(el => fadeObserver.observe(el));
+            
+            const tabNavs = document.querySelectorAll('.tab-nav');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabNavs.forEach(nav => {
+                nav.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    tabNavs.forEach(n => n.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    initTabAnimations(tabId);
+                });
+            });
+            
+            function initTabAnimations(tabId) {
+                if (tabId === 'tab2') {
+                    initSoundAnimations();
+                }
+            }
+            
+            function initSoundAnimations() {
+                const soundHead = document.getElementById('soundHead');
+                const soundSources = document.querySelectorAll('.sound-source');
+                
+                if (!soundHead) return;
+                
+                let rotation = 0;
+                const rotateHead = () => {
+                    rotation = rotation === 0 ? 30 : rotation === 30 ? -30 : 0;
+                    soundHead.style.transform = `rotateY(${rotation}deg)`;
+                    
+                    setTimeout(() => {
+                        soundHead.style.transform = 'rotateY(0deg)';
+                    }, 2000);
+                };
+                
+                rotateHead();
+                const headInterval = setInterval(rotateHead, 4000);
+                
+                soundSources.forEach((source, index) => {
+                    const pulse = source.querySelector('.source-pulse');
+                    if (pulse) {
+                        pulse.style.animationDelay = `${index * 0.3}s`;
+                    }
+                });
+            }
+            
+            const colorOptions = document.querySelectorAll('.color-option');
+            
+            colorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    colorOptions.forEach(opt => {
+                        opt.classList.remove('active');
+                    });
+                    
+                    option.classList.add('active');
+                });
+            });
+            
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                if (anchor.classList.contains('mobile-nav-link')) return;
+                
+                anchor.addEventListener('click', function(e) {
+                    if (this.getAttribute('href') === '#') return;
+                    
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 60,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+            
+            const productImage = document.querySelector('.product-image');
+            if (productImage) {
+                window.addEventListener('scroll', () => {
+                    const scrolled = window.pageYOffset;
+                    const rate = scrolled * 0.5;
+                    productImage.style.transform = `translateY(${rate}px) scale(${1 - rate * 0.0005})`;
+                });
+            }
+            
+            const chipGlows = document.querySelectorAll('.chip-glow');
+            chipGlows.forEach(glow => {
+                setInterval(() => {
+                    if (glow.style.opacity === '0.5') {
+                        glow.style.opacity = '0.3';
+                    } else {
+                        glow.style.opacity = '0.5';
+                    }
+                }, 2000);
+            });
+            
+            setTimeout(() => {
+                initTabAnimations('tab1');
+            }, 500);
+            
+            document.addEventListener('touchstart', function() {}, {passive: true});
+            
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            window.addEventListener('resize', () => {
+                let vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            });
+            
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    let vh = window.innerHeight * 0.01;
+                    document.documentElement.style.setProperty('--vh', `${vh}px`);
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>
